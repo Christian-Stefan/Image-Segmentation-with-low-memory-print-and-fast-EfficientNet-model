@@ -40,6 +40,7 @@ from torchvision.transforms.v2 import (
 import segmentation_models_pytorch as smp
 from torchvision.transforms.v2 import functional as F
 import random
+from codecarbon import EmissionTracker
 ### Specific imports - End - ###
 
 ### Model Import - Start - ###
@@ -94,6 +95,17 @@ def get_args_parser():
 
 
 def main(args):
+
+    # Initializinh external energy and performance related trackers
+    # 1.1 CodeCarbon Initialization
+    tracker = EmissionTracker(
+        project_name = "NNCV"
+        measure_power_secs = 15, # How often it pings the API
+        api_key = None
+    )
+    tracker.start()
+    
+    # 1.2 W&B initialization
     wandb.init(
         project="5lsm0-cityscapes-segmentation",  # Project name in wandb
         name=args.experiment_id,  # Experiment name in wandb
@@ -284,6 +296,8 @@ def main(args):
             f"final_model-epoch={epoch:04}-val_loss={valid_loss:04}.pt"
         )
     )
+
+    tracker.stop()
     wandb.finish()
 
 
