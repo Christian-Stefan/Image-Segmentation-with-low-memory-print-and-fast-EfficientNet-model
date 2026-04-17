@@ -31,10 +31,10 @@ import segmentation_models_pytorch as smp
 # wrapping the Model's class initialization in a class is required
 def get_model():
     return smp.Unet(
-        encoder_name="efficientnet-b2",        # Use your chosen backbone
+        encoder_name="efficientnet-b0",        # Use your chosen backbone
         encoder_weights="imagenet",            # Start with pre-trained knowledge
         in_channels=3,                         # RGB input
-        classes=30                            # 19 Cityscapes evaluation classes
+        classes=19                            # 19 Cityscapes evaluation classes
     )
 
 
