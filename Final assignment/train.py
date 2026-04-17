@@ -40,7 +40,7 @@ from torchvision.transforms.v2 import (
 import segmentation_models_pytorch as smp
 from torchvision.transforms.v2 import functional as F
 import random
-from codecarbon import EmissionTracker
+from codecarbon import EmissionsTracker
 ### Specific imports - End - ###
 
 ### Model Import - Start - ###
@@ -82,26 +82,63 @@ def convert_train_id_to_color(prediction: torch.Tensor) -> torch.Tensor:
 def get_args_parser():
 
     parser = ArgumentParser("Training script for a PyTorch U-Net model")
-    parser.add_argument("--data-dir", type=str, default="./data/cityscapes", help="Path to the training data")
-    parser.add_argument("--batch-size", type=int, default=48, help="Training batch size")
-    parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs")
-    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
+    parser.add_argument("--data-dir", type=str, default="./data/cityscapes")
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--num-workers", type=int, default=10)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--experiment-id", type=str, default="unet-training")
+    parser.add_argument("--ignore-index", type=int, default=255)
     parser.add_argument("--lrs", nargs=2, type=float, default=[1e-5, 3e-4], help='Differential LRs: first backbone, second for head')
-    parser.add_argument("--num-workers", type=int, default=10, help="Number of workers for data loaders")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
-    parser.add_argument("--experiment-id", type=str, default="efficientnet1-training", help="Experiment ID for Weights & Biases")
+    # Select criteria by name
+    parser.add_argument("--criterion1", type=str, default="DiceLoss",choices=["CrossEntropyLoss", "DiceLoss", "FocalLoss"],help="Primary loss")
+    parser.add_argument("--criterion2", type=str, default="FocalLoss",choices=["CrossEntropyLoss", "DiceLoss", "FocalLoss"],help="Secondary loss")
+    # Criteria utilities
+    parser.add_argument("--label-smoothing", type=float, default=0.0,help="Only used by CrossEntropyLoss")
+    parser.add_argument("--focal-gamma", type=float, default=2.0,help="Only used by FocalLoss (SMP)")
+    parser.add_argument("--focal-alpha", type=float, default=None,help="Only used by FocalLoss (SMP)")
+    parser.add_argument("--dice-smooth", type=float, default=0.0, help="Only used by DiceLoss (SMP)")
 
     return parser
 
+def make_criterion(name: str, args):
+
+    name = name.strip()
+    if name == "CrossEntropyLoss":
+        # ignore_index masks out pixels equal to that value (no loss/grad contribution). [1](https://gist.github.com/ivechan/806faa4193c00ed41971c7f6878b4eca)[2](https://segmentation-models-pytorch.readthedocs.io/en/latest/_modules/segmentation_models_pytorch/losses/dice.html)
+        return nn.CrossEntropyLoss(
+            ignore_index=args.ignore_index,
+            label_smoothing=args.label_smoothing,
+        )
+
+    elif name == "DiceLoss":
+        # DiceLoss supports ignore_index and from_logits=True for raw logits. [3](https://stackoverflow.com/questions/73135768/how-to-use-ignore-index-in-torch-nn-crossentropyloss)[4](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html)
+        return smp.losses.DiceLoss(
+            mode="multiclass",
+            ignore_index=args.ignore_index,
+            from_logits=True,
+            smooth=args.dice_smooth,
+        )
+
+    elif name == "FocalLoss":
+        # FocalLoss supports ignore_index; implementation assumes logits by default. [5](https://github.com/mcordts/cityscapesScripts/blob/master/cityscapesscripts/helpers/labels.py)[3](https://stackoverflow.com/questions/73135768/how-to-use-ignore-index-in-torch-nn-crossentropyloss)
+        return smp.losses.FocalLoss(
+            mode="multiclass",
+            ignore_index=args.ignore_index,
+            gamma=args.focal_gamma,
+            alpha=args.focal_alpha)
+    else:
+        raise ValueError(f"Unknown criterion: {name}")
 
 def main(args):
 
     # Initializinh external energy and performance related trackers
     # 1.1 CodeCarbon Initialization
-    tracker = EmissionTracker(
-        project_name = "NNCV"
+    tracker = EmissionsTracker(
+        project_name = "NNCV",
         measure_power_secs = 15, # How often it pings the API
-        api_key = None
+        api_key = "cpt_WG5mDdl1q7HHzCxwZ2T04-e4TyFPBsx7y9XNM8YmzCE"
     )
     tracker.start()
     
@@ -128,7 +165,7 @@ def main(args):
     # Define the transforms to apply to the data
     img_transform = Compose([
     ToImage(),
-    Resize((256, 512)),
+    Resize((299, 299)),
     ToDtype(torch.float32, scale=True),
     Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), Default normalization
@@ -138,7 +175,7 @@ def main(args):
     # Target transform (mask)
     target_transform = Compose([
         ToImage(),
-        Resize((256, 512), interpolation=InterpolationMode.NEAREST),
+        Resize((299, 299), interpolation=InterpolationMode.NEAREST),
         ToDtype(torch.int64)  # no scaling
     ])
 
@@ -186,10 +223,15 @@ def main(args):
 
 
     # Define the loss function
-    criterion = smp.losses.DiceLoss(mode='multiclass',ignore_index=255, from_logits=True)
-
+    #criterion_dice = smp.losses.DiceLoss(mode='multiclass',ignore_index=255, from_logits=True)
+    #criterion_ce = nn.CrossEntropyLoss(ignore_index=255)
+    #criterion_fl = smp.losses.FocalLoss(mode='multiclass',ignore_index=255)
+    criterion1 = make_criterion(args.criterion1, args).to(device)
+    criterion2 = make_criterion(args.criterion2, args).to(device)
+    print("Using criterion 1 {} and criterion 2 {}".format(criterion1, criterion2))
     # Define the optimizer
     optimizer = RMSprop([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params,'lr':args.lrs[1]}], alpha=0.9, momentum=0.9, weight_decay=1e-5, eps=0.001)
+    #optimizer = AdamW([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params, 'lr':args.lrs[1]}],weight_decay=1e-5,eps=0.001)
 
     # Define the Scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
@@ -225,7 +267,7 @@ def main(args):
 
             optimizer.zero_grad()
             outputs = Model(images)
-            loss = criterion(outputs, labels)
+            loss = ((0.5*criterion2(outputs, labels)) + (0.5*criterion1(outputs, labels)))
             loss.backward()
             optimizer.step()
 
@@ -247,7 +289,7 @@ def main(args):
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
                 outputs = Model(images)
-                loss = criterion(outputs, labels)
+                loss = ((0.5*criterion2(outputs, labels)) + (0.5*criterion1(outputs,labels)))
                 losses.append(loss.item())
 
                 if i == 0:
