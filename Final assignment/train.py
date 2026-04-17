@@ -19,7 +19,7 @@ from argparse import ArgumentParser
 ### Regular imports - End - ###
 
 
-### Specific imports - Start - ###
+### ML Specific imports - Start - ###
 import wandb
 import torch
 import torch.nn as nn
@@ -40,8 +40,9 @@ from torchvision.transforms.v2 import (
 import segmentation_models_pytorch as smp
 from torchvision.transforms.v2 import functional as F
 import random
-from codecarbon import EmissionsTracker
-### Specific imports - End - ###
+from codecarbon import EmissionsTracker #CodeCarbon Estimator
+from thop import profile #FLOS estimator
+### ML Specific imports - End - ###
 
 ### Model Import - Start - ###
 from model import get_model
@@ -147,7 +148,6 @@ class CityscapesPipeline:
         # 3. Format and Normalize
         image = F.to_dtype(F.to_image(image), torch.float32, scale=True)
         image = F.normalize(image, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-        
         target = F.to_dtype(F.to_image(target), torch.int64)
 
         return image, target
@@ -221,21 +221,30 @@ def main(args):
     backbone_params = Model.encoder.parameters()
     head_params = list(Model.decoder.parameters()) + list(Model.segmentation_head.parameters())
 
-
     # Define the loss function
-    #criterion_dice = smp.losses.DiceLoss(mode='multiclass',ignore_index=255, from_logits=True)
-    #criterion_ce = nn.CrossEntropyLoss(ignore_index=255)
-    #criterion_fl = smp.losses.FocalLoss(mode='multiclass',ignore_index=255)
     criterion1 = make_criterion(args.criterion1, args).to(device)
     criterion2 = make_criterion(args.criterion2, args).to(device)
     print("Using criterion 1 {} and criterion 2 {}".format(criterion1, criterion2))
+
     # Define the optimizer
     optimizer = RMSprop([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params,'lr':args.lrs[1]}], alpha=0.9, momentum=0.9, weight_decay=1e-5, eps=0.001)
     #optimizer = AdamW([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params, 'lr':args.lrs[1]}],weight_decay=1e-5,eps=0.001)
 
     # Define the Scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
-
+    # ---------------------------------
+    # Determining number of FLOPs by feeding the model with a dummy image
+    print("Calculating Model FLOPs...")
+    dummy_input = torch.randn(1, 3, 299, 299).to(device)
+    macs, params = profile(Model, inputs=(dummy_input, ), verbose=False)
+    flops = macs * 2  # MACs (Multiply-Accumulate) are roughly half a FLOP
+    gflops = flops / 1e9 # Convert to GigaFLOPs for readability
+    print(f"Model GFLOPs: {gflops:.3f}")
+    # Define an independent Dice function just for observation
+    observation_dice = smp.losses.DiceLoss(mode='multiclass', ignore_index=255, from_logits=True)
+    # Threshold
+    BASELINE_DICE_SCORE:float = 0.65
+    # ---------------------------------
     # Training loop
     best_valid_loss = float('inf')
     current_best_model_path = None
@@ -269,17 +278,23 @@ def main(args):
       	# Validation
         Model.eval()
         with torch.no_grad():
-            losses = []
+            losses:list = []
+            dice_scores:list = []
+
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
                 images, labels = images.to(device), labels.to(device)
-
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
                 outputs = Model(images)
                 loss = ((0.5*criterion2(outputs, labels)) + (0.5*criterion1(outputs,labels)))
                 losses.append(loss.item())
+
+                # ---------- CALCULATING EMPIRICAL DICE OBSERVATION ------------ #
+                batch_dice_score = 1.0 - observation_dice(outputs, labels).item()
+                dice_scores.append()
+                # ---------------------------------------------------------------#
 
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
@@ -301,9 +316,22 @@ def main(args):
                         "labels": [wandb.Image(labels_img)],
                     }, step=(epoch + 1) * len(train_dataloader) - 1)
 
+            #  ------------ Logging Dice/Gflops metric ---------------- #
+            # Calculating differential loss over v. set
             valid_loss = sum(losses) / len(losses)
+            # Calculating empirical dice loss
+            valid_dice = sum(dice_scores)/len(dice_scores)
+
+            if valid_dice <(0.80*BASELINE_DICE_SCORE):
+                valid_dice=0
+            else:
+                efficiency_metric = valid_dice/ gflops
+            # --------------------------------------------------------- #
+
             wandb.log({
-                "valid_loss": valid_loss
+                "valid_loss": valid_loss,
+                "valid_dice_score":valid_dice, # 
+                "efficiency_metric":efficiency_metric 
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:
