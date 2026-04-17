@@ -46,9 +46,8 @@ from codecarbon import EmissionsTracker
 ### Model Import - Start - ###
 from model import get_model
 ### Model Import - End - ###
-
-
 #TODO Improve the looping mechanism once you have reach a super optimal zone;
+
 # 1. Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes} # Creates a dictionary of mapped classes through dict-comprehension
 def convert_to_train_id(label_img: torch.Tensor) -> torch.Tensor:
@@ -77,7 +76,6 @@ def convert_train_id_to_color(prediction: torch.Tensor) -> torch.Tensor:
             color_image[:, i][mask] = color[i]
 
     return color_image
-
 
 def get_args_parser():
 
@@ -131,6 +129,29 @@ def make_criterion(name: str, args):
     else:
         raise ValueError(f"Unknown criterion: {name}")
 
+class CityscapesPipeline:
+    def __init__(self, is_train=True):
+        self.is_train = is_train
+
+    def __call__(self, image, target):
+        # 1. Resize (Bilinear for image, Nearest for mask to avoid blending class IDs)
+        image = F.resize(image, (299, 299), interpolation=InterpolationMode.BILINEAR)
+        target = F.resize(target, (299, 299), interpolation=InterpolationMode.NEAREST)
+
+        # 2. Synchronized Sample-Level Augmentation
+        # Rolls the dice for each individual image, keeping image and mask perfectly aligned
+        if self.is_train and random.random() > 0.5:
+            image = F.horizontal_flip(image)
+            target = F.horizontal_flip(target)
+
+        # 3. Format and Normalize
+        image = F.to_dtype(F.to_image(image), torch.float32, scale=True)
+        image = F.normalize(image, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        
+        target = F.to_dtype(F.to_image(target), torch.int64)
+
+        return image, target
+
 def main(args):
 
     # Initializinh external energy and performance related trackers
@@ -162,32 +183,12 @@ def main(args):
     # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Define the transforms to apply to the data
-    img_transform = Compose([
-    ToImage(),
-    Resize((299, 299)),
-    ToDtype(torch.float32, scale=True),
-    Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-    # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), Default normalization
-    ])
-
-    #TODO Find out what the target_transform do?
-    # Target transform (mask)
-    target_transform = Compose([
-        ToImage(),
-        Resize((299, 299), interpolation=InterpolationMode.NEAREST),
-        ToDtype(torch.int64)  # no scaling
-    ])
-
-    #TODO Find out what this do?
-    # Load the dataset and make a split for training and validation
     train_dataset = Cityscapes(
-    args.data_dir,
-    split="train",
-    mode="fine",
-    target_type="semantic",
-    transform=img_transform,
-    target_transform=target_transform,
+        args.data_dir,
+        split="train",
+        mode="fine",
+        target_type="semantic",
+        transforms=CityscapesPipeline(is_train=True) # Uses the joint pipeline
     )
 
     valid_dataset = Cityscapes(
@@ -195,8 +196,7 @@ def main(args):
         split="val",
         mode="fine",
         target_type="semantic",
-        transform=img_transform,
-        target_transform=target_transform,
+        transforms=CityscapesPipeline(is_train=False) # Skips the flip for validation
     )
 
     train_dataloader = DataLoader(
@@ -247,30 +247,19 @@ def main(args):
         for i, (images, labels) in enumerate(train_dataloader):
             # 1. Map IDs first (Vectorized is best here)
             labels = convert_to_train_id(labels) 
-    
-            # 2. Sample-level Augmentation (Independent for each image in batch)
-            augmented_images, augmented_labels = [], []
-            
-            for img, lbl in zip(images, labels):
-                if random.random() > 0.5:
-                    img = F.horizontal_flip(img)
-                    lbl = F.horizontal_flip(lbl)
-                augmented_images.append(img)
-                augmented_labels.append(lbl)
-            
-            # Stack them back into batches
-            images = torch.stack(augmented_images)
-            labels = torch.stack(augmented_labels)
 
+            # 2. Move to device and format dimensions
             images, labels = images.to(device), labels.to(device)
             labels = labels.long().squeeze(1)  # Remove channel dimension
 
+            # 3. Forward and Backward Pass
             optimizer.zero_grad()
             outputs = Model(images)
             loss = ((0.5*criterion2(outputs, labels)) + (0.5*criterion1(outputs, labels)))
             loss.backward()
             optimizer.step()
 
+            # 4. Logging
             wandb.log({
                 "train_loss": loss.item(),
                 "learning_rate": optimizer.param_groups[0]['lr'],
