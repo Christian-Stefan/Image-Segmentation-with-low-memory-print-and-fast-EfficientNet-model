@@ -159,7 +159,9 @@ def main(args):
     tracker = EmissionsTracker(
         project_name = "NNCV",
         measure_power_secs = 15, # How often it pings the API
-        api_key = "cpt_WG5mDdl1q7HHzCxwZ2T04-e4TyFPBsx7y9XNM8YmzCE"
+        api_key="cpt_Yhs9XqbNLtS-J-L7Fig8fuaySZQXyEcbp7ipCnumPHg",
+        save_to_api = True,
+        experiment_id="a1ac9d91-e078-4104-a93e-df86c1b25b90"
     )
     tracker.start()
     
