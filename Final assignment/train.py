@@ -132,21 +132,30 @@ def make_criterion(name: str, args):
         raise ValueError(f"Unknown criterion: {name}")
 
 class CityscapesPipeline:
-    def __init__(self, is_train=True):
+    def __init__(self,size=(512,512),is_train=True):
         self.is_train = is_train
+	self.size = size
 
     def __call__(self, image, target):
-        # 1. Resize (Bilinear for image, Nearest for mask to avoid blending class IDs)
-        image = F.resize(image, (299, 299), interpolation=InterpolationMode.BILINEAR)
-        target = F.resize(target, (299, 299), interpolation=InterpolationMode.NEAREST)
+	if self.is_train:
+		i, j, h, w = RandomResizedCrop.get_params(
+		image, scale=(0.5, 1.0), ratio=(1.0, 1.0)        
+        	)
+        	# 1. Resize (Bilinear for image, Nearest for mask to avoid blending class IDs)
+        	image = F.resize(image, i, j, h, w, self.size, interpolation=InterpolationMode.BILINEAR)
+        	target = F.resize(target, i, j, h, w, self.size, interpolation=InterpolationMode.NEAREST)
 
-        # 2. Synchronized Sample-Level Augmentation
-        # Rolls the dice for each individual image, keeping image and mask perfectly aligned
-        if self.is_train and random.random() > 0.5:
-            image = F.horizontal_flip(image)
-            target = F.horizontal_flip(target)
-
-        # 3. Format and Normalize
+	        # 2. Synchronized Sample-Level Augmentation
+	        # Rolls the dice for each individual image, keeping image and mask perfectly aligned
+       		if self.is_train and random.random() > 0.5:
+            		image = F.horizontal_flip(image)
+            		target = F.horizontal_flip(target)
+	else:
+		# For validation, we use a standard Resize to maintain consistency
+            	image = F.resize(image, self.size, interpolation=InterpolationMode.BILINEAR)
+            	target = F.resize(target, self.size, interpolation=InterpolationMode.NEAREST)
+        
+	# 3. Format and Normalize
         image = F.to_dtype(F.to_image(image), torch.float32, scale=True)
         image = F.normalize(image, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         target = F.to_dtype(F.to_image(target), torch.int64)
@@ -232,8 +241,8 @@ def main(args):
     print("Using criterion 1 {} and criterion 2 {}".format(criterion1, criterion2))
 
     # Define the optimizer
-    optimizer = RMSprop([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params,'lr':args.lrs[1]}], alpha=0.9, momentum=0.9, weight_decay=1e-5, eps=0.001)
-    #optimizer = AdamW([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params, 'lr':args.lrs[1]}],weight_decay=1e-5,eps=0.001)
+    #optimizer = RMSprop([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params,'lr':args.lrs[1]}], alpha=0.9, momentum=0.9, weight_decay=1e-5, eps=0.001)
+    optimizer = AdamW([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params, 'lr':args.lrs[1]}],weight_decay=1e-4)
 
     # Define the Scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
