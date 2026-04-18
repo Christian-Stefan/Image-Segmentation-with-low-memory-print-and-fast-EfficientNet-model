@@ -93,6 +93,7 @@ def get_args_parser():
     # Select criteria by name
     parser.add_argument("--criterion1", type=str, default="DiceLoss",choices=["CrossEntropyLoss", "DiceLoss", "FocalLoss"],help="Primary loss")
     parser.add_argument("--criterion2", type=str, default="FocalLoss",choices=["CrossEntropyLoss", "DiceLoss", "FocalLoss"],help="Secondary loss")
+    parser.add_argument("--criterion3", type=str, default="CrossEntropyLoss",choices=["CrossEntropyLoss", "DiceLoss","FocalLoss"],help="Third loss - optional")
     # Criteria utilities
     parser.add_argument("--label-smoothing", type=float, default=0.0,help="Only used by CrossEntropyLoss")
     parser.add_argument("--focal-gamma", type=float, default=2.0,help="Only used by FocalLoss (SMP)")
@@ -226,6 +227,8 @@ def main(args):
     # Define the loss function
     criterion1 = make_criterion(args.criterion1, args).to(device)
     criterion2 = make_criterion(args.criterion2, args).to(device)
+    criterion3 = make_criterion(args.criterion3, args).to(device)
+
     print("Using criterion 1 {} and criterion 2 {}".format(criterion1, criterion2))
 
     # Define the optimizer
@@ -266,7 +269,7 @@ def main(args):
             # 3. Forward and Backward Pass
             optimizer.zero_grad()
             outputs = Model(images)
-            loss = ((0.5*criterion2(outputs, labels)) + (0.5*criterion1(outputs, labels)))
+            loss = ((0.4*criterion2(outputs, labels)) + (0.4*criterion1(outputs, labels))+(0.2*criterion3(outputs, labels)))
             loss.backward()
             optimizer.step()
 
@@ -290,7 +293,7 @@ def main(args):
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
                 outputs = Model(images)
-                loss = ((0.5*criterion2(outputs, labels)) + (0.5*criterion1(outputs,labels)))
+                loss = ((0.4*criterion2(outputs, labels)) + (0.4*criterion1(outputs,labels)) + (0.2 * criterion3(outputs,labels)))
                 losses.append(loss.item())
 
                 # ---------- CALCULATING EMPIRICAL DICE OBSERVATION ------------ #
