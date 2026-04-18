@@ -34,7 +34,8 @@ from torchvision.transforms.v2 import (
     ToImage,
     ToDtype,
     InterpolationMode,
-    RandomHorizontalFlip
+    RandomHorizontalFlip,
+    RandomResizedCrop
 )
 
 import segmentation_models_pytorch as smp
@@ -134,26 +135,25 @@ def make_criterion(name: str, args):
 class CityscapesPipeline:
     def __init__(self,size=(512,512),is_train=True):
         self.is_train = is_train
-	self.size = size
-
+        self.size = size
+        
     def __call__(self, image, target):
-	if self.is_train:
-		i, j, h, w = RandomResizedCrop.get_params(
-		image, scale=(0.5, 1.0), ratio=(1.0, 1.0)        
-        	)
+        if self.is_train:
         	# 1. Resize (Bilinear for image, Nearest for mask to avoid blending class IDs)
-        	image = F.resize(image, i, j, h, w, self.size, interpolation=InterpolationMode.BILINEAR)
-        	target = F.resize(target, i, j, h, w, self.size, interpolation=InterpolationMode.NEAREST)
+            i, j, h, w = RandomResizedCrop.get_params(
+		    image, scale=(0.5, 1.0), ratio=(1.0, 1.0))
+            image = F.resize(image, i, j, h, w, self.size, interpolation=InterpolationMode.BILINEAR)
+            target = F.resize(target, i, j, h, w, self.size, interpolation=InterpolationMode.NEAREST)
 
 	        # 2. Synchronized Sample-Level Augmentation
 	        # Rolls the dice for each individual image, keeping image and mask perfectly aligned
-       		if self.is_train and random.random() > 0.5:
-            		image = F.horizontal_flip(image)
-            		target = F.horizontal_flip(target)
-	else:
+            if self.is_train and random.random() > 0.5:
+                image = F.horizontal_flip(image)
+                target = F.horizontal_flip(target)
+        else:
 		# For validation, we use a standard Resize to maintain consistency
-            	image = F.resize(image, self.size, interpolation=InterpolationMode.BILINEAR)
-            	target = F.resize(target, self.size, interpolation=InterpolationMode.NEAREST)
+            image = F.resize(image, self.size, interpolation=InterpolationMode.BILINEAR)
+            target = F.resize(target, self.size, interpolation=InterpolationMode.NEAREST)
         
 	# 3. Format and Normalize
         image = F.to_dtype(F.to_image(image), torch.float32, scale=True)
