@@ -293,7 +293,7 @@ def main(args):
 
                 # ---------- CALCULATING EMPIRICAL DICE OBSERVATION ------------ #
                 batch_dice_score = 1.0 - observation_dice(outputs, labels).item()
-                dice_scores.append()
+                dice_scores.append(batch_dice_score)
                 # ---------------------------------------------------------------#
 
                 if i == 0:
@@ -323,7 +323,7 @@ def main(args):
             valid_dice = sum(dice_scores)/len(dice_scores)
 
             if valid_dice <(0.80*BASELINE_DICE_SCORE):
-                valid_dice=0
+                efficiency_metric = 0
             else:
                 efficiency_metric = valid_dice/ gflops
             # --------------------------------------------------------- #
