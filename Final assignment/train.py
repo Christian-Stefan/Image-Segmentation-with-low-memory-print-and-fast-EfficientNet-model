@@ -18,7 +18,6 @@ import os
 from argparse import ArgumentParser
 ### Regular imports - End - ###
 
-
 ### ML Specific imports - Start - ###
 import wandb
 import torch
@@ -49,6 +48,34 @@ from thop import profile #FLOS estimator
 from model import get_model
 ### Model Import - End - ###
 #TODO Improve the looping mechanism once you have reach a super optimal zone;
+
+
+# Multipliers to heavily penalize missing small/rare objects (e.g., Pedestrians = 4x penalty)
+CITYSCAPES_CLASS_WEIGHTS = [
+    1.0,  # 0: Road
+    2.0,  # 1: Sidewalk
+    1.5,  # 2: Building
+    3.0,  # 3: Wall
+    3.0,  # 4: Fence
+    3.0,  # 5: Pole
+    3.0,  # 6: Traffic Light
+    3.0,  # 7: Traffic Sign
+    1.5,  # 8: Vegetation
+    2.0,  # 9: Terrain
+    1.5,  # 10: Sky
+    4.0,  # 11: Person
+    4.0,  # 12: Rider
+    2.0,  # 13: Car
+    4.0,  # 14: Truck
+    4.0,  # 15: Bus
+    4.0,  # 16: Train
+    4.0,  # 17: Motorcycle
+    4.0   # 18: Bicycle
+]
+
+# Define the device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 # 1. Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes} # Creates a dictionary of mapped classes through dict-comprehension
@@ -97,7 +124,7 @@ def get_args_parser():
     parser.add_argument("--criterion3", type=str, default="CrossEntropyLoss",choices=["CrossEntropyLoss", "DiceLoss","FocalLoss"],help="Third loss - optional")
     # Criteria utilities
     parser.add_argument("--label-smoothing", type=float, default=0.0,help="Only used by CrossEntropyLoss")
-    parser.add_argument("--focal-gamma", type=float, default=2.0,help="Only used by FocalLoss (SMP)")
+    parser.add_argument("--focal-gamma", type=float, default=4.0,help="Only used by FocalLoss (SMP)")
     parser.add_argument("--focal-alpha", type=float, default=None,help="Only used by FocalLoss (SMP)")
     parser.add_argument("--dice-smooth", type=float, default=0.0, help="Only used by DiceLoss (SMP)")
 
@@ -106,9 +133,13 @@ def get_args_parser():
 def make_criterion(name: str, args):
 
     name = name.strip()
+    # Convert our list into a GPU tensor
+    weights_tensor = torch.tensor(CITYSCAPES_CLASS_WEIGHTS, dtype=torch.float32).to(device)
+    
     if name == "CrossEntropyLoss":
         # ignore_index masks out pixels equal to that value (no loss/grad contribution). [1](https://gist.github.com/ivechan/806faa4193c00ed41971c7f6878b4eca)[2](https://segmentation-models-pytorch.readthedocs.io/en/latest/_modules/segmentation_models_pytorch/losses/dice.html)
         return nn.CrossEntropyLoss(
+            weight = weights_tensor,
             ignore_index=args.ignore_index,
             label_smoothing=args.label_smoothing,
         )
@@ -141,9 +172,9 @@ class CityscapesPipeline:
         if self.is_train:
         	# 1. Resize (Bilinear for image, Nearest for mask to avoid blending class IDs)
             i, j, h, w = RandomResizedCrop.get_params(
-		    image, scale=(0.5, 1.0), ratio=(1.0, 1.0))
-            image = F.resize(image, i, j, h, w, self.size, interpolation=InterpolationMode.BILINEAR)
-            target = F.resize(target, i, j, h, w, self.size, interpolation=InterpolationMode.NEAREST)
+		    image, scale=(0.3, 1.0), ratio=(1.0, 1.0))
+            image = F.resized_crop(image, i, j, h, w, self.size, interpolation=InterpolationMode.BILINEAR)
+            target = F.resized_crop(target, i, j, h, w, self.size, interpolation=InterpolationMode.NEAREST)
 
 	        # 2. Synchronized Sample-Level Augmentation
 	        # Rolls the dice for each individual image, keeping image and mask perfectly aligned
@@ -191,9 +222,6 @@ def main(args):
     # make sure to set their seeds as well
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
-
-    # Define the device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_dataset = Cityscapes(
         args.data_dir,
