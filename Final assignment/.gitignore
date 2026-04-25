@@ -1,3 +1,13 @@
 data/
 *.sif
+*.out.env
+checkpoints/
+myVenv/
 *.out
+EDA_NNCV.ipynb
+jobscript_slurm.sh
+download_docke_and_data.sh
+download_docker_and_data.sh
+download_docker_and_data.sh
+jobscript_slurm.sh
+.env

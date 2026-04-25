@@ -1,10 +1,9 @@
 wandb login
-
-python3 train.py \
+python3 train_hypo.py \
     --data-dir ./data/cityscapes \
     --batch-size 4 \
-    --epochs 100 \
+    --epochs 20 \
     --lr 0.001 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "efficient-net-b2-training, 320X254  RMS prop,batch_size=4, DiceLoss, change of differential learning rates" \
+    --experiment-id "Hyperparameter Optimization with the old set-up" \

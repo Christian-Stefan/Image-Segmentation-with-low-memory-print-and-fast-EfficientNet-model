@@ -438,7 +438,7 @@ if __name__ == "__main__":
 
         iteration_scores:list = []
 
-        for iteration in range(5):
+        for iteration in range(2):
             print(f"  -> Iteration {iteration + 1}/5 (Mom: {current_momentum:.2f}, WD: {current_wd:.1e})")
             base_args.seed = 42 + iteration
             base_args.experiment_id = f"adaptive_hpo_T{trial+1}_I{iteration+1}"
