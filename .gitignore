@@ -171,4 +171,7 @@ cython_debug/
 .ruff_cache/
 
 # PyPI configuration file
-.pypirc
+.pypircmyVenv/
+myVenv
+Final assignment/EDA_NNCV.ipynb
+Final assignment/EDA_NNCV.ipynb
