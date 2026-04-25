@@ -289,6 +289,7 @@ def main(args):
     # ---------------------------------
     # Training loop
     best_valid_loss = float('inf')
+    best_valid_dice = 0.0
     current_best_model_path = None
     for epoch in range(args.epochs):
         print(f"Epoch {epoch+1:04}/{args.epochs:04}")
@@ -364,6 +365,9 @@ def main(args):
             # Calculating empirical dice loss
             valid_dice = sum(dice_scores)/len(dice_scores)
 
+            if valid_dice >best_valid_dice:
+                best_valid_dice=valid_dice
+
             if valid_dice <(0.80*BASELINE_DICE_SCORE):
                 efficiency_metric = 0
             else:
@@ -400,6 +404,8 @@ def main(args):
 
     tracker.stop()
     wandb.finish()
+
+    return best_valid_dice
 
 
 if __name__ == "__main__":
