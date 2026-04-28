@@ -192,8 +192,21 @@ def make_criterion(name: str, args):
 
 ### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ End Setup Settings \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ### 
 
-
+### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ Start Training & Testing \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ### 
+# 9. Building a mini pipeline;
 class CityscapesPipeline:
+    """
+    Motivation: Chosing a "dunder" (e.g., __name_of_your_method__) it's a better practice as it convert our class into a memory-based method which requires only one time instantiation and "rembers" the constructor's attributes;
+    Def:
+    --- Constructor ---
+    :param tuple(int, int) size: Desired output dimensions for images and masks.
+    :param bool is_train: Toggles between training augmentations and validation resizing.
+    
+    --- Class function __call__ ---
+    :param PIL.Image/Tensor image: The input RGB image to be processed.
+    :param PIL.Image/Tensor target: The ground truth segmentation mask.
+    :return: Processed image (normalized float32) and target (int64).
+    """
     def __init__(self,size=(512,512),is_train=True):
         self.is_train = is_train
         self.size = size
@@ -432,9 +445,14 @@ def main(args):
     wandb.finish()
 
 
+### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ End Training & Testing \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ### 
+
+
+### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ Start Main Console \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ### 
 if __name__ == "__main__":
     parser = get_args_parser()
     args = parser.parse_args()
     # Make sure cache memory is free
     torch.cuda.empty_cache()
     main(args)
+## \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ End Main Console \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ### 
