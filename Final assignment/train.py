@@ -56,6 +56,9 @@ from model import get_model
 ### Model Import - End - ###
 ### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ End Imports \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ###
 
+### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ Start Setup Settings \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ### 
+
+# 1.
 # Multipliers to heavily penalize missing small/rare objects (e.g., Pedestrians = 4x penalty)
 # ... hard coded float values all together wrapped up in a list and \
 # ... further passed to eturn nn.CrossEntropyLoss(weight = weight_tensr = CITYSCAPES_CLASS_WEIGHTS ...)
@@ -82,19 +85,22 @@ CITYSCAPES_CLASS_WEIGHTS:list = [
     4.0   # 18: Bicycle
 ]
 
+# 2.
 # Define the device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# 1. Mapping class IDs to train IDs
+
+# 3. Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes} # Creates a dictionary of mapped classes through dict-comprehension
 def convert_to_train_id(label_img: torch.Tensor) -> torch.Tensor:
     """Maps raw Cityscapes class IDs to the 19 standard training IDs used for evaluation, setting ignored classes to 255."""
     return label_img.apply_(lambda x: id_to_trainid[x])
 
-# 2. Mapping train IDs to color
+# 4. Mapping train IDs to color
 train_id_to_color = {cls.train_id: cls.color for cls in Cityscapes.classes if cls.train_id != 255}
 train_id_to_color[255] = (0, 0, 0)  # Assign black to ignored labels
 
+# 5. Building painted-by-number segmentation mask.
 def convert_train_id_to_color(prediction: torch.Tensor) -> torch.Tensor:
     """
     Builds a Paint-by-Number map. Acts as a sort of engine painter
@@ -114,6 +120,7 @@ def convert_train_id_to_color(prediction: torch.Tensor) -> torch.Tensor:
 
     return color_image
 
+# 6. Definition of all non-immutable setting-related arguments
 def get_args_parser():
 
     parser = ArgumentParser("Training script for a PyTorch U-Net model")
@@ -170,6 +177,9 @@ def make_criterion(name: str, args):
             alpha=args.focal_alpha)
     else:
         raise ValueError(f"Unknown criterion: {name}")
+
+### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ End Setup Settings \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ### 
+
 
 class CityscapesPipeline:
     def __init__(self,size=(512,512),is_train=True):
