@@ -19,6 +19,7 @@ a function 'make_criterion()' has been defined, which allows us to do this in on
    This ensures proper execution when the script is run directly.
 """
 
+### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ Start Imports \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ###
 ### Regular imports - Start - ###
 import os
 from argparse import ArgumentParser
@@ -53,11 +54,13 @@ from thop import profile #FLOS estimator
 ### Model Import - Start - ###
 from model import get_model
 ### Model Import - End - ###
-#TODO Improve the looping mechanism once you have reach a super optimal zone;
-
+### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ End Imports \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ###
 
 # Multipliers to heavily penalize missing small/rare objects (e.g., Pedestrians = 4x penalty)
-CITYSCAPES_CLASS_WEIGHTS = [
+# ... hard coded float values all together wrapped up in a list and \
+# ... further passed to eturn nn.CrossEntropyLoss(weight = weight_tensr = CITYSCAPES_CLASS_WEIGHTS ...)
+# ... to check the corresponding labels please have a closer look to  [1](https://github.com/mcordts/cityscapesScripts/blob/master/cityscapesscripts/helpers/labels.py), 62...99
+CITYSCAPES_CLASS_WEIGHTS:list = [
     1.0,  # 0: Road
     2.0,  # 1: Sidewalk
     1.5,  # 2: Building
