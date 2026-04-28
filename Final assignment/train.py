@@ -103,8 +103,9 @@ train_id_to_color[255] = (0, 0, 0)  # Assign black to ignored labels
 # 5. Building painted-by-number segmentation mask.
 def convert_train_id_to_color(prediction: torch.Tensor) -> torch.Tensor:
     """
-    Builds a Paint-by-Number map. Acts as a sort of engine painter
-    e.g.,
+    Def: Builds a Paint-by-Number map. Acts as a sort of engine painter
+
+    e.g./personal note, 
     The Logic: It looks at the official Cityscapes class list and says: "If the ID is 0 (Road), use the color Purple (128, 64, 128). If it's 13 (Car), use Blue (0, 0, 142)."
     The Catch: Since we mapped all the "junk" classes to 255 earlier, it explicitly tells the code: "Anything labeled 255 should be painted Black (0, 0, 0)."
     """
@@ -145,10 +146,21 @@ def get_args_parser():
 
     return parser
 
+# 7. Predefined loss criterion whose arguments can be modified in one go before execution starts
 def make_criterion(name: str, args):
+    """
+    Def: Acts as a criterion constructor that permits the user to define and implement changes at a parameter level across three distinct loss functions in one single go. 
+    All the desired changes will be applied globally—primarily within "main()`
 
+    :param string name: the criteiron name (e.g., "--criterion1", type=str, default="DiceLoss",choices=["CrossEntropyLoss"'...) predefined as an .env var in parser container 
+    :param args: other arguments predefined as .env vars in parser container (e.g. "--label-smoothing", type=float, default=0.0; --label-smoothing", type=float, default=0.0)
+
+    return: object of the criteria with implicitly defined parameters
+    """
+
+    # 7.1 Remove extraneous characters that might undermine the natural flow of the process
     name = name.strip()
-    # Convert our list into a GPU tensor
+    # 7.2 Convert our list into a GPU tensor
     weights_tensor = torch.tensor(CITYSCAPES_CLASS_WEIGHTS, dtype=torch.float32).to(device)
     
     if name == "CrossEntropyLoss":
