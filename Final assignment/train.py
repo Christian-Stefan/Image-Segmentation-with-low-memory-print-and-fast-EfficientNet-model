@@ -3,14 +3,20 @@ This script implements a training loop for the model. It is designed to be flexi
 allowing you to easily modify hyperparameters using a command-line argument parser.
 
 ### Key Features:
-1. **Hyperparameter Tuning:** Adjust hyperparameters by parsing arguments from the `main.sh` script or directly 
-   via the command line.
-2. **Remote Execution Support:** Since this script runs on a server, training progress is not visible on the console. 
+1. **Hyperparameter Tuning:** Adjust hyperparameters by parsing arguments from the `main.sh` 
+script or directly via the command line. It is entirely focused on finding the best design choices for RMSprop. 
+This reduces the searching space in the attempt to improve one pivotal component.
+2. **Data Augmentation Pipeline:** A mini pipeline wrapped in a standalone class (`CityscapesPipeline`) has been created 
+in order to ease the implementation of new data augmentation techniques.
+3. **List of weights:** To gain full control of what classes the model should stress most during the training phase, 
+a list ('CITYSCAPES_CLASS_WEIGHTS') containing weighting float factors for all the 19 classes has been created that is converted 
+into a 'weights_tensor,' which is being passed as a custom argument to the CrossEntropyLoss 'defined in 'make_criterion.'
+4. **Craft criterion:** To impose experimental settings in a convenient and efficient fashion over the optimizer's parameters, 
+a function 'make_criterion()' has been defined, which allows us to do this in one single go.
+5. **Remote Execution Support:** Since this script runs on a server, training progress is not visible on the console. 
    To address this, we use the `wandb` library for logging and tracking progress and results.
-3. **Encapsulation:** The training loop is encapsulated in a function, enabling it to be called from the main block. 
+6. **Encapsulation:** The training loop is encapsulated in a function, enabling it to be called from the main block. 
    This ensures proper execution when the script is run directly.
-
-Feel free to customize the script as needed for your use case.
 """
 
 ### Regular imports - Start - ###
@@ -75,7 +81,6 @@ CITYSCAPES_CLASS_WEIGHTS = [
 
 # Define the device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 # 1. Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes} # Creates a dictionary of mapped classes through dict-comprehension
