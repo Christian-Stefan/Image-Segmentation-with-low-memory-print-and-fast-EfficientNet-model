@@ -21,13 +21,6 @@ In short, this project contains:
 
 ## Prerequisites
 
-Before running the project, make sure all required Python packages are installed in your local environment.
-The dependency file is located under the `Perquisites` directory. From the root directory of the repository, run:
-
-```bash
-pip install -r Perquisites/requirements.txt
-```
-
 **Before running the project**, make sure all required Python packages are installed in your local environment.
 The dependency file is located under the `Perquisites` directory. From the root directory of the repository, run:
 
