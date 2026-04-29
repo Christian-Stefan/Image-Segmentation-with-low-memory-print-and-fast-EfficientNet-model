@@ -319,17 +319,19 @@ def main(args):
     # Debug statement 1
     # print("Using criterion 1 {} and criterion 2 {}".format(criterion1, criterion2))
 
-    # Define the optimizer
+    # 9.6 Define the optimizer
     optimizer = RMSprop([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params,'lr':args.lrs[1]}], 
                         alpha=0.9, 
-                        momentum=0.9, 
+                        momentum=0.85, 
                         weight_decay=1e-5, 
                         eps=0.001)
-    # optimizer = AdamW([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params, 'lr':args.lrs[1]}],weight_decay=1e-4)
+    # optimizer = AdamW([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params, 'lr':args.lrs[1]}],
+    #                   weight_decay=1e-4)
 
-    # Define the Scheduler
+    # 9.7 Define the Scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
-    # ---------------------------------
+
+    # ---------------FLOPs Calculation Starts ----------------
     # Determining number of FLOPs by feeding the model with a dummy image
     print("Calculating Model FLOPs...")
     dummy_input = torch.randn(1, 3, 299, 299).to(device)
@@ -337,62 +339,65 @@ def main(args):
     flops = macs * 2  # MACs (Multiply-Accumulate) are roughly half a FLOP
     gflops = flops / 1e9 # Convert to GigaFLOPs for readability
     print(f"Model GFLOPs: {gflops:.3f}")
-    # Define an independent Dice function just for observation
+    # Testing
+    # ...define an independent Dice function just for observation
     observation_dice = smp.losses.DiceLoss(mode='multiclass', ignore_index=255, from_logits=True)
     # Threshold
     BASELINE_DICE_SCORE:float = 0.65
-    # ---------------------------------
-    # Training loop
-    best_valid_loss = float('inf')
+   # ---------------FLOPs Calculation ends ----------------
+
+    # 10. Training loop
+    # 10.1 Defining the training-loop variables for recording performance across testing set;
+    best_valid_loss:float = float('inf')
     current_best_model_path = None
+
     for epoch in range(args.epochs):
         print(f"Epoch {epoch+1:04}/{args.epochs:04}")
 
-        # Training
+        # 10.2. Initializing Training session
         Model.train()
         for i, (images, labels) in enumerate(train_dataloader):
-            # 1. Map IDs first (Vectorized is best here)
+            # 10.3. Map IDs first (Vectorized is best here)
             labels = convert_to_train_id(labels) 
-
-            # 2. Move to device and format dimensions
+            # 10.4 Move to device and format dimensions
             images, labels = images.to(device), labels.to(device)
             labels = labels.long().squeeze(1)  # Remove channel dimension
-
-            # 3. Forward and Backward Pass
+            # 10.5 Forward and Backward Pass
             optimizer.zero_grad()
             outputs = Model(images)
             loss = ((0.4*criterion2(outputs, labels)) + (0.4*criterion1(outputs, labels))+(0.2*criterion3(outputs, labels)))
             loss.backward()
             optimizer.step()
 
-            # 4. Logging
+            ### --- Start Logging training loss, learning rate evolution and epoch ---###
             wandb.log({
                 "train_loss": loss.item(),
                 "learning_rate": optimizer.param_groups[0]['lr'],
                 "epoch": epoch + 1,
             }, step=epoch * len(train_dataloader) + i)
-            
-      	# Validation
+            ### --- End Logging training loss, learning rate evolution and epoch ---###
+
+      	# 11. Validation loop initialization
         Model.eval()
         with torch.no_grad():
+            # 11.1 Defining containers wherein official and empirical loss (e.g., dice) will be separately stored
             losses:list = []
             dice_scores:list = []
-
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
                 images, labels = images.to(device), labels.to(device)
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
-                outputs = Model(images)
-                loss = ((0.4*criterion2(outputs, labels)) + (0.4*criterion1(outputs,labels)) + (0.2 * criterion3(outputs,labels)))
-                losses.append(loss.item())
+                outputs = Model(images) # Predict
+                loss = ((0.4*criterion2(outputs, labels)) + (0.4*criterion1(outputs,labels)) + (0.2 * criterion3(outputs,labels))) # Quantify how much of a good prediction we got
+                losses.append(loss.item()) # Keep the records of loss
 
-                # ---------- CALCULATING EMPIRICAL DICE OBSERVATION ------------ #
-                batch_dice_score = 1.0 - observation_dice(outputs, labels).item()
-                dice_scores.append(batch_dice_score)
-                # ---------------------------------------------------------------#
-
+                # ---------- Start calculating empirical dice observation ------------ #
+                batch_dice_score = 1.0 - observation_dice(outputs, labels).item()     # Used just as an aditional observation mean to 
+                dice_scores.append(batch_dice_score)                                 # help assess how close the performance of the model gets
+                # ---------- End calculating empirical dice observation ------------ # from the relevant quantification metric (e.g., Dice/FLOP(s))
+            
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
 
@@ -425,6 +430,7 @@ def main(args):
                 efficiency_metric = valid_dice/ gflops
             # --------------------------------------------------------- #
 
+        ### --- Start Logging testing loss, dice score, and efficiency metric (Dice/FLOPs) --- ###
             wandb.log({
                 "valid_loss": valid_loss,
                 "valid_dice_score":valid_dice, # 
@@ -442,9 +448,10 @@ def main(args):
                 torch.save(Model.state_dict(), current_best_model_path)
         scheduler.step()
         wandb.log({"learning_rate": optimizer.param_groups[0]['lr']}, step=(epoch + 1) * len(train_dataloader))
+         ### --- End Logging testing loss, dice score, and efficiency metric (Dice/FLOPs) --- ###
     print("Training complete!")
 
-    # Save the model
+    # 12. Save the model
     torch.save(
         Model.state_dict(),
         os.path.join(
@@ -455,8 +462,6 @@ def main(args):
 
     tracker.stop()
     wandb.finish()
-
-
 ### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ End Training & Testing \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ### 
 
 
