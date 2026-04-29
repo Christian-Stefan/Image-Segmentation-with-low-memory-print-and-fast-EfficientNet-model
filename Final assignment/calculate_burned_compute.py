@@ -4,15 +4,18 @@ import pandas as pd
 ### --- END Imports --- ###
 
 
-### --- Api Init and hardcoded variables (e.g., project's path; no. of jobs; accumulated kWh)
+### --- START Api Init and hardcoded variables (e.g., project's path; no. of jobs; accumulated kWh) --- ###
 api = wandb.Api()
 PROJECT_PATH = "5lsm0-cityscapes-segmentation" 
 runs = api.runs(PROJECT_PATH)
 
-total_wh = 0
-processed_runs = 0
+total_wh:int = 0
+processed_runs:int = 0
+### --- END Api Init and hardcoded experiment-counters variables (e.g., project's path; no. of jobs; accumulated kWh) --- ###
 
-print(f"Targeting Metric: system.gpu.0.powerWatts\n" + "-"*30)
+
+# Debug Statement 1
+# print(f"Targeting Metric: system.gpu.0.powerWatts\n" + "-"*30)
 
 for run in runs:
     # 1. Set-up:  We pull the 'system' stream specifically for hardware metrics
@@ -36,13 +39,13 @@ for run in runs:
             total_wh += run_wh
             processed_runs += 1
             # Debug Statement 1
-            # print(f"✅ {run.name}: {avg_power:.1f}W for {duration_hrs:.2f}h -> {run_wh:.2f} Wh")
+            # print(f"{run.name}: {avg_power:.1f}W for {duration_hrs:.2f}h -> {run_wh:.2f} Wh")
             continue # don't exist the loop if not True
 
-    print(f"❌ {run.name}: Metric not found in system stream.")
+    print(f"X {run.name}: Metric not found in system stream.")
 
 if processed_runs > 0:
     print(f"Final Count: {processed_runs} runs processed.")
     print(f"Total Project Energy Burn: {total_wh / 1000:.4f} kWh")
 else:
-    print("Still no data. Check if the metric name in the 'Expressions' tab uses different slashes or underscores.")
+    pass # Feel free to implement a catch for erors and debugging purpouses;
