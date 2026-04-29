@@ -17,16 +17,16 @@ In short, this project contains:
 - Supporting files needed to run the experiment in a slurm environment (e.g., `Dockerfile`);
 - Additional test steps to ensure smoothless execution; 
 
-## Prerequisites
+## 1. Prerequisites
 
-**1. Before running the project**, make sure all required Python packages are installed in your local environment.
+**a) Before running the project**, make sure all required Python packages are installed in your local environment.
 The dependency file is located under the `Perquisites` directory. From the root directory of the repository, run:
 
 ```bash
 pip install -r Perquisites/requirements.txt
 ```
 
-**Second**, make sure you download the data as the second step describes in `Documents/README-Slurm.md` while factoring in a minor change. The training data is downloaded from exact same root but the container host and content (e.g.,dependencies) changed so please use `Dockerfile_Slurm_Server.sh` instead. When the right Dockerfile was put in place the following steps applies: 
+**b) Second**, make sure you download the data as the second step describes in `Documents/README-Slurm.md` while factoring in a minor change. The training data is downloaded from exact same root but the container host and content (e.g.,dependencies) changed so please use `Dockerfile_Slurm_Server.sh` instead. When the "right" (either mine or `download_docker_and_data.sh` which holds the baseline settings) Dockerfile was put in place the following command  applies: 
 
 ```bash
 chmod +x Dockerfile_Slurm_Server.sh
@@ -41,16 +41,16 @@ After the job finishes, you should see:
 > Note that we first add execution rights to the file to avoid any errors. You only have to do this once.
 > For any other issues related to data download please check this [discussion](https://github.com/orgs/TUE-ARIA/discussions/62)
 
-## On-Server execution
+## 2. On-Server execution
 
 Under this section, two on-server execution scenarios are covered:
 
-- training the model
-- conducting hyperparameter optimization
+i) training the model
+ii) conducting hyperparameter optimization
 
-### Training
+###i) Training
 
-If one wants to only train the model, then follow the remaining steps from the third step onwards from `Documents/README-Slurm.md`.
+If one wants to only train the model, then follow the remaining steps from the third step onwards in `Documents/README-Slurm.md`.
 
 Please note that `Documents/README-Slurm.md` covers everything apart from the CodeCarbon initialization.
 
