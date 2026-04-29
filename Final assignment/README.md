@@ -3,11 +3,9 @@
 Hi :)
 
 This repository provides a concise and reproducible implementation of a semantic segmentation experiment.  
-The model used in this project is derived from the **EfficientNet** family and uses a pre-trained encoder as the feature-extraction backbone for semantic segmentation.
+The model used in this project is derived from the **EfficientNet** family and uses a pre-trained encoder as the feature-extraction backbone for semantic segmentation while equipping an untrained U-net decoder. 
 
-EfficientNet is a family of convolutional neural networks designed to achieve strong performance while remaining computationally efficient. More information about the original EfficientNet implementation can be found here:
-
-[EfficientNet - TensorFlow TPU GitHub Repository](https://github.com/tensorflow/tpu/tree/master/models/official/efficientnet)
+EfficientNet is a family of convolutional neural networks designed to achieve strong performance while remaining computationally efficient. More information about the original EfficientNet implementation can be found [here](EfficientNet - TensorFlow TPU GitHub Repository](https://github.com/tensorflow/tpu/tree/master/models/official/efficientnet)
 
 ## Repository Overview
 
@@ -15,10 +13,11 @@ The purpose of this repository is to make the experiment easy to understand, rep
 
 In short, this project contains:
 
-- A semantic segmentation model based on an EfficientNet encoder
-- Training and/or inference scripts required to reproduce the experiment
+- A semantic segmentation model based on an EfficientNet encoder and U-net decoder;
 - A `requirements.txt` file containing the Python dependencies
-- Supporting files needed to run the experiment in a local environment
+- Training and/or inference scripts required to reproduce the experiment (e.g., Hyperparameter optimization/`train_hypo.py` or mere training/`train.py`)
+- Supporting files needed to run the experiment in a slurm environment (e.g., `Dockerfile`)
+- Additional test steps to ensure smoothless execution; 
 
 ## Prerequisites
 
