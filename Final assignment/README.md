@@ -14,18 +14,15 @@ The purpose of this repository is to make the experiment easy to understand, rep
 In short, this project contains:
 
 - A semantic segmentation model based on an EfficientNet encoder and U-net decoder;
-- A `requirements.txt` file containing the Python dependencies
-- Training and/or inference scripts required to reproduce the experiment (e.g., Hyperparameter optimization/`train_hypo.py` or mere training/`train.py`)
-- Supporting files needed to run the experiment in a slurm environment (e.g., `Dockerfile`)
+- A `requirements.txt` file containing the Python dependencies;
+- Training and/or inference scripts required to reproduce the experiment (e.g., Hyperparameter optimization/`train_hypo.py` or mere training/`train.py`);
+- Supporting files needed to run the experiment in a slurm environment (e.g., `Dockerfile`);
 - Additional test steps to ensure smoothless execution; 
 
 ## Prerequisites
 
 Before running the project, make sure all required Python packages are installed in your local environment.
-
-The dependency file is located under the `Perquisites` directory.
-
-From the root directory of the repository, run:
+The dependency file is located under the `Perquisites` directory. From the root directory of the repository, run:
 
 ```bash
 pip install -r Perquisites/requirements.txt
