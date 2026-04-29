@@ -1,45 +1,158 @@
-# 5LSM0: Neural Networks for Computer Vision
+# Semantic Segmentation with EfficientNet-based Encoder
 
-Welcome to the repository for **5LSM0: Neural Networks for Computer Vision**, a course offered by the Department of Electrical Engineering at Eindhoven University of Technology. This course is hosted by the [Architectures for Relaible Image Analysis Lab](https://github.com/TUE-ARIA).
+Hi :)
 
-## Overview
+This repository provides a concise and reproducible implementation of a semantic segmentation related project.  
+The model used in this project is derived from the **EfficientNet** family and uses a **pre-trained encoder as the feature-extraction backbone for semantic segmentation while equipping an untrained U-net decoder**.  EfficientNet is a family of convolutional neural networks designed to achieve strong performance while remaining computationally efficient. More information about the original EfficientNet implementation can be found [here](https://github.com/tensorflow/tpu/tree/master/models/official/efficientnet)
 
-This repository contains all the assignments and supplementary materials for the course. The weekly assignments are designed as **Jupyter Notebooks**, providing practical, hands-on experience with the concepts discussed during lectures. These notebooks will help you gain familiarity with implementing neural networks using **PyTorch** in **Python**. For the final assignment, you will apply the knowledge gained throughout the course by coding in native Python and working with a compute cluster, providing valuable experience in real-world computational environments.
+## Repository Overview
 
-### Weekly Assignments
+The purpose of this repository is to make the whole project easy to understand, reproduce, and evaluate.
 
-The weekly assignments are structured to guide you through foundational and advanced topics in neural networks for computer vision. These assignments are:
-- **Optional**: They are not mandatory but serve as valuable practice to build your coding skills.
-- **Hands-On**: Focused on applying theoretical knowledge from the lectures into real-world implementations.
+In short, this project contains:
 
-### Final Assignment
+- A semantic segmentation model based on an EfficientNet encoder and U-net decoder located in `model.py`;
+- A `requirements.txt` file containing the Python dependencies;
+- Training and/or inference scripts required to reproduce the experiment (e.g., Hyperparameter optimization/`train_hypo.py` or mere training/`train.py`);
+- Supporting files needed to run the experiment in a slurm environment (e.g., `Dockerfile`);
+- Additional test steps to ensure smoothless execution; 
 
-The **final assignment** is the cornerstone of this course and accounts for **50% of your final grade**. In this project, you will:
-1. Work on a real-world problem using the **CityScapes dataset**.
-2. Train neural networks and validate their performance against established baselines.
-3. Document your results and insights in a detailed report.
+## 1. Prerequisites
 
-This final assignment requires a deeper dive into the subject, pushing you to apply the knowledge and skills gained throughout the course.
+**a) Before running the project**, make sure all required Python packages are installed in your local environment.
+The dependency file is located under the `Perquisites` directory. From the root directory of the repository, run:
 
-The final assignment will start in week 3 (February 24th), once all core lectures have been completed, ensuring you have the necessary foundation to work on the project.
+```bash
+pip install -r Perquisites/requirements.txt
+```
 
-## Authors and Contact
+**b) Second**, make sure you download the data as the second step describes in `Documents/README-Slurm.md` while factoring in a minor change. The training data is downloaded from exact same root but the container host and content (e.g.,dependencies) changed so please use `Dockerfile_Slurm_Server.sh` instead. When the "right" (either mine or `download_docker_and_data.sh` which holds the baseline settings) Dockerfile was put in place the following command  applies: 
 
-This course material is developed and maintained by the following contributors:  
+```bash
+chmod +x Dockerfile_Slurm_Server.sh
+sbatch Dockerfile_Slurm_Server.sh
+```
 
-- **Cris H.B. Claessens**  
-  Email: [c.h.b.claessens@tue.nl](mailto:c.h.b.claessens@tue.nl)  
+After the job finishes, you should see:
 
-- **Tim J.M. Jaspers**  
-  Email: [t.j.m.jaspers@tue.nl](mailto:t.j.m.jaspers@tue.nl)
+- a `data/` directory
+- a `container.sif` file
 
-- **Francisco De Espírito Santo e Caetano**  
-  Email: [f.t.de.espirito.santo.e.caetano@tue.nl](mailto:f.t.de.espirito.santo.e.caetano@tue.nl)
+> Note that we first add execution rights to the file to avoid any errors. You only have to do this once.
+> For any other issues related to data download please check this [discussion](https://github.com/orgs/TUE-ARIA/discussions/62)
 
-- **Lemar Abdi**  
-  Email: [l.abdi@tue.nl](mailto:l.abdi@tue.nl)
+## 2. On-Server execution
 
-- **dr. Christiaan G.A. Viviers**  
-  Email: [c.g.a.vivers@tue.nl](mailto:c.g.a.vivers@tue.nl)
+Under this section, two on-server execution scenarios are covered:
 
-If you have questions or need assistance, you can always reach out to us via email. However, we strongly encourage you to post your questions in the **Discussions** section of this GitHub repository. This way, other students can benefit from the conversations and contribute by helping each other out.
+- i) training the model
+- ii) conducting hyperparameter optimization
+
+### i) Training
+
+If one wants to only train the model, then follow the remaining steps from the third step onwards in `Documents/README-Slurm.md`.
+
+Please note that `Documents/README-Slurm.md` covers everything apart from the CodeCarbon initialization.
+
+In order to use the online-mode of CodeCarbon, the following are required:
+
+- An API key
+- The project name
+- The experiment ID
+
+The official CodeCarbon cloud/API documentation can be found here:
+
+https://docs.codecarbon.io/latest/how-to/cloud-api/
+
+First, create an account on the CodeCarbon dashboard:
+
+https://dashboard.codecarbon.io/
+
+Then authenticate the local/server environment by running:
+
+```bash
+codecarbon login
+```
+
+This command authenticates the environment, creates a default project, and stores the CodeCarbon credentials in a `.codecarbon.config` file. The authentification step becomes optional when an API key linked to the account holder exists thus the `codecarbon login` becomes a negligible step. 
+If the API key is passed explicitly in the code, obtain it from the CodeCarbon dashboard/account settings and store it in a variable before starting the tracker. The project name is the name under which the emissions of the current experiment will be grouped in the CodeCarbon dashboard. A project can be created or managed from the CodeCarbon dashboard.
+
+The `experiment_id` identifies the specific experiment/run group where the emissions will be logged. This can also be created or obtained from the CodeCarbon dashboard.
+
+After the API key, project name, and experiment ID have been obtained, store everything in variables and pass the arguments accordingly in `train.py`, under:
+
+```python
+# 9.1 CodeCarbon setting initialization and tracker start
+```
+
+For example:
+
+```python
+# 9.1 CodeCarbon setting initialization and tracker start
+
+CODECARBON_PROJECT_NAME = "NNCV"
+CODECARBON_API_KEY = "your_api_key_here"
+CODECARBON_EXPERIMENT_ID = "a1ac9d91-e078-4104-a93e-df86c1b25b90"
+
+tracker = EmissionsTracker(
+    project_name=CODECARBON_PROJECT_NAME,
+    measure_power_secs=15,
+    api_key=CODECARBON_API_KEY,
+    save_to_api=True,
+    experiment_id=CODECARBON_EXPERIMENT_ID
+)
+
+tracker.start()
+```
+
+The tracker should be started before the training process begins so that the energy consumption and carbon emissions of the model training are recorded and sent to the CodeCarbon online dashboard.
+
+### ii) Hyperparameter optimization
+
+If one is interested in conducting hyperparameter optimization, then replace the executable Python script in `main.sh` as shown below:
+
+```bash
+wandb login
+python3 train.py \
+```
+
+with:
+
+```bash
+wandb login
+python3 train_hypo.py \
+    --data-dir ./dat
+```
+
+After replacing the executable Python script, proceed normally as described in `Documents/README-Slurm.md`.
+
+You will use the `jobscript_slurm.sh` file to submit a job to the SLURM cluster. This script specifies the resources and command.
+
+Submit the job with the following command:
+
+```bash
+chmod +x jobscript_slurm.sh
+sbatch jobscript_slurm.sh
+```
+
+SLURM will queue and execute your job when resources are available.
+
+## 3. Submission
+
+In order to properly build the Docker container for the final submission, you must use the updated Docker script that entails all the external libraries utilized in this project (e.g., `thop`, `codecarbon`, `segmentation-models-pytorch`). 
+
+This updated configuration is provided under the file name `Dockerfile_submission`. Therefore, when following Step 3 ("Build a docker image") in the official `Documents/README-Submission.md` guide, please replace the baseline command provided by the teacher with the updated command below:
+
+**Baseline command (Does not incorporate project dependencies):**
+```bash
+docker build -t nncv-submission:latest -f "Final assignment/Dockerfile" "Final assignment"
+```
+
+**Updated command (Builds the image with all required settings and dependencies):**
+
+```bash
+docker build -t nncv-submission:latest -f "Final assignment/Dockerfile_submission" "Final assignment"
+```
+
+> [!CAUTION]
+> **Directory Context Matters:** Please pay close attention to the root folder from which you execute these commands. The relative file paths assume you are running them from the correct project root. Depending on your local directory structure, you may need to adjust the paths to ensure they point to the exact locations of your `Dockerfile_submission` and project files.
