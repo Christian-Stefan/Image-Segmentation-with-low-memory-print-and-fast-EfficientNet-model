@@ -45,8 +45,8 @@ After the job finishes, you should see:
 
 Under this section, two on-server execution scenarios are covered:
 
-i) training the model
-ii) conducting hyperparameter optimization
+- i) training the model
+- ii) conducting hyperparameter optimization
 
 ### i) Training
 
@@ -136,3 +136,19 @@ sbatch jobscript_slurm.sh
 ```
 
 SLURM will queue and execute your job when resources are available.
+
+## 3. Submission
+
+In order to properly build the Docker container for the final submission, you must use the updated Docker script that entails all the external libraries utilized in this project (e.g., `thop`, `codecarbon`, `segmentation-models-pytorch`). 
+
+This updated configuration is provided under the file name `Dockerfile_submission`. Therefore, when following Step 3 ("Build a docker image") in the official `Documents/README-Submission.md` guide, please replace the baseline command provided by the teacher with the updated command below:
+
+**Baseline command (Does not incorporate project dependencies):**
+```bash
+docker build -t nncv-submission:latest -f "Final assignment/Dockerfile" "Final assignment"
+```
+
+**Updated command (Builds the image with all required settings and dependencies):
+
+```bash
+docker build -t nncv-submission:latest -f "Final assignment/Dockerfile_submission" "Final assignment"
