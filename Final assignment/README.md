@@ -76,11 +76,7 @@ Then authenticate the local/server environment by running:
 codecarbon login
 ```
 
-This command authenticates the environment, creates a default project, and stores the CodeCarbon credentials in a `.codecarbon.config` file.
-
-If the API key is passed explicitly in the code, obtain it from the CodeCarbon dashboard/account settings and store it in a variable before starting the tracker.
-
-The project name is the name under which the emissions of the current experiment will be grouped in the CodeCarbon dashboard. A project can be created or managed from the CodeCarbon dashboard.
+This command authenticates the environment, creates a default project, and stores the CodeCarbon credentials in a `.codecarbon.config` file. If the API key is passed explicitly in the code, obtain it from the CodeCarbon dashboard/account settings and store it in a variable before starting the tracker. The project name is the name under which the emissions of the current experiment will be grouped in the CodeCarbon dashboard. A project can be created or managed from the CodeCarbon dashboard.
 
 The `experiment_id` identifies the specific experiment/run group where the emissions will be logged. This can also be created or obtained from the CodeCarbon dashboard.
 
