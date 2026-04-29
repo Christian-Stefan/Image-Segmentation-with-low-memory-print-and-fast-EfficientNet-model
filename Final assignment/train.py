@@ -164,7 +164,7 @@ def make_criterion(name: str, args):
     weights_tensor = torch.tensor(CITYSCAPES_CLASS_WEIGHTS, dtype=torch.float32).to(device)
     
     if name == "CrossEntropyLoss":
-        # ignore_index masks out pixels equal to that value (no loss/grad contribution). [1](https://gist.github.com/ivechan/806faa4193c00ed41971c7f6878b4eca)[2](https://segmentation-models-pytorch.readthedocs.io/en/latest/_modules/segmentation_models_pytorch/losses/dice.html)
+        # ignore_index masks out pixels equal to that value (no loss/grad contribution). [2](https://gist.github.com/ivechan/806faa4193c00ed41971c7f6878b4eca)[2](https://segmentation-models-pytorch.readthedocs.io/en/latest/_modules/segmentation_models_pytorch/losses/dice.html)
         return nn.CrossEntropyLoss(
             weight = weights_tensor,
             ignore_index=args.ignore_index,
@@ -181,7 +181,7 @@ def make_criterion(name: str, args):
         )
 
     elif name == "FocalLoss":
-        # FocalLoss supports ignore_index; implementation assumes logits by default. [5](https://github.com/mcordts/cityscapesScripts/blob/master/cityscapesscripts/helpers/labels.py)[3](https://stackoverflow.com/questions/73135768/how-to-use-ignore-index-in-torch-nn-crossentropyloss)
+        # FocalLoss supports ignore_index; implementation assumes logits by default. [4](https://github.com/mcordts/cityscapesScripts/blob/master/cityscapesscripts/helpers/labels.py)[3](https://stackoverflow.com/questions/73135768/how-to-use-ignore-index-in-torch-nn-crossentropyloss)
         return smp.losses.FocalLoss(
             mode="multiclass",
             ignore_index=args.ignore_index,
@@ -193,11 +193,14 @@ def make_criterion(name: str, args):
 ### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ End Setup Settings \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ### 
 
 ### \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ Start Training & Testing \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ### 
-# 9. Building a mini pipeline;
+# 8. Building a mini pipeline;
 class CityscapesPipeline:
     """
-    Motivation: Chosing a "dunder" (e.g., __name_of_your_method__) it's a better practice as it convert our class into a memory-based method which requires only one time instantiation and "rembers" the constructor's attributes;
-    Def:
+    Motivation: Chosing a "dunder" (e.g., __name_of_your_method__) it's a better practice as it converts our class into a memory-based method 
+    which requires only one time instantiation and "rembers" the constructor's attributes;
+    
+    Def: Class used to augment data;
+
     --- Constructor ---
     :param tuple(int, int) size: Desired output dimensions for images and masks.
     :param bool is_train: Toggles between training augmentations and validation resizing.
@@ -213,35 +216,38 @@ class CityscapesPipeline:
         
     def __call__(self, image, target):
         if self.is_train:
-        	# 1. Resize (Bilinear for image, Nearest for mask to avoid blending class IDs)
+        	# Applicable to training;
+            # 8.1. Resize (Bilinear for image, Nearest for mask to avoid blending class IDs)
             i, j, h, w = RandomResizedCrop.get_params(
 		    image, scale=(0.3, 1.0), ratio=(1.0, 1.0))
             image = F.resized_crop(image, i, j, h, w, self.size, interpolation=InterpolationMode.BILINEAR)
             target = F.resized_crop(target, i, j, h, w, self.size, interpolation=InterpolationMode.NEAREST)
 
-	        # 2. Synchronized Sample-Level Augmentation
-	        # Rolls the dice for each individual image, keeping image and mask perfectly aligned
-            if self.is_train and random.random() > 0.5:
+	        # 8.2. Synchronized Sample-Level Augmentation
+	        # ...rolls the dice for each individual image, keeping image and mask perfectly aligned
+            if self.is_train and random.random() > 0.5: 
                 image = F.horizontal_flip(image)
                 target = F.horizontal_flip(target)
         else:
-		# For validation, we use a standard Resize to maintain consistency
+        # Applicable to testing;
+		# 8.3 For validation, we use a standard Resize to maintain consistency
             image = F.resize(image, self.size, interpolation=InterpolationMode.BILINEAR)
             target = F.resize(target, self.size, interpolation=InterpolationMode.NEAREST)
         
-	# 3. Format and Normalize
+	# 8.4. Format and Normalize
         image = F.to_dtype(F.to_image(image), torch.float32, scale=True)
-        image = F.normalize(image, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        image = F.normalize(image, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # recommended distribution parameters to be used by [5](https://github.com/IliaZenkov/DCGAN-Rectangular-GANHacks2/blob/main/DCGAN_rectangular.ipynb)
         target = F.to_dtype(F.to_image(target), torch.int64)
 
         return image, target
 
+# 9. Building the wrapper 
 def main(args):
 
     # Initializinh external energy and performance related trackers
-    # 1.1 CodeCarbon Initialization
+    # 9.1 CodeCarbon setting initialization and tracker start
     tracker = EmissionsTracker(
-        project_name = "NNCV",
+        project_name = "NNCV", # Project Name
         measure_power_secs = 15, # How often it pings the API
         api_key="None",
         save_to_api = True,
@@ -249,7 +255,7 @@ def main(args):
     )
     tracker.start()
     
-    # 1.2 W&B initialization
+    # 9.2 W&B initialization
     wandb.init(
         project="5lsm0-cityscapes-segmentation",  # Project name in wandb
         name=args.experiment_id,  # Experiment name in wandb
@@ -266,12 +272,13 @@ def main(args):
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
 
+    # 9.3 Creating the data loaders based on the custom pipeline class
     train_dataset = Cityscapes(
         args.data_dir,
         split="train",
         mode="fine",
         target_type="semantic",
-        transforms=CityscapesPipeline(is_train=True) # Uses the joint pipeline
+        transforms=CityscapesPipeline(is_train=True) # Uses custom pipeline class ('the joint pipeline') 
     )
 
     valid_dataset = Cityscapes(
@@ -296,24 +303,29 @@ def main(args):
     )
 
 
-    # 1. Initialize the model and activate CUDA
+    # 9.4 Initialize the model and activate CUDA
     Model = get_model()
     Model = Model.to(device)
 
-    # 2. Group Parameters for Differential Learning Rates
-    backbone_params = Model.encoder.parameters()
-    head_params = list(Model.decoder.parameters()) + list(Model.segmentation_head.parameters())
+    # 9.5. Group Parameters for Differential Learning Rates
+    backbone_params = Model.encoder.parameters() # Conservative learning rate (e.g., args.lrs[0]) must be applied to maintain the underlying luggage of knowledge intact 
+    head_params = list(Model.decoder.parameters()) + list(Model.segmentation_head.parameters()) # Not conservative (e.g., args.lrs[1])
 
     # Define the loss function
-    criterion1 = make_criterion(args.criterion1, args).to(device)
-    criterion2 = make_criterion(args.criterion2, args).to(device)
-    criterion3 = make_criterion(args.criterion3, args).to(device)
+    criterion1 = make_criterion(args.criterion1, args).to(device) # C.E.
+    criterion2 = make_criterion(args.criterion2, args).to(device) # FocalLoss
+    criterion3 = make_criterion(args.criterion3, args).to(device) # DiceLoss
 
-    print("Using criterion 1 {} and criterion 2 {}".format(criterion1, criterion2))
+    # Debug statement 1
+    # print("Using criterion 1 {} and criterion 2 {}".format(criterion1, criterion2))
 
     # Define the optimizer
-    #optimizer = RMSprop([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params,'lr':args.lrs[1]}], alpha=0.9, momentum=0.9, weight_decay=1e-5, eps=0.001)
-    optimizer = AdamW([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params, 'lr':args.lrs[1]}],weight_decay=1e-4)
+    optimizer = RMSprop([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params,'lr':args.lrs[1]}], 
+                        alpha=0.9, 
+                        momentum=0.9, 
+                        weight_decay=1e-5, 
+                        eps=0.001)
+    # optimizer = AdamW([{'params':backbone_params,'lr':args.lrs[0]},{'params':head_params, 'lr':args.lrs[1]}],weight_decay=1e-4)
 
     # Define the Scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
