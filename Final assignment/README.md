@@ -43,8 +43,14 @@ After the job finishes, you should see:
 > Note that we first add execution rights to the file to avoid any errors. You only have to do this once.
 > For any other issues related to data download please check this [discussion](https://github.com/orgs/TUE-ARIA/discussions/62)
 
-
 ## On-Server execution
+
+Under this section, two on-server execution scenarios are covered:
+
+- training the model
+- conducting hyperparameter optimization
+
+### Training
 
 If one wants to only train the model, then follow the remaining steps from the third step onwards from `Documents/README-Slurm.md`.
 
@@ -60,8 +66,6 @@ The official CodeCarbon cloud/API documentation can be found here:
 
 https://docs.codecarbon.io/latest/how-to/cloud-api/
 
-### CodeCarbon online-mode setup
-
 First, create an account on the CodeCarbon dashboard:
 
 https://dashboard.codecarbon.io/
@@ -74,7 +78,11 @@ codecarbon login
 
 This command authenticates the environment, creates a default project, and stores the CodeCarbon credentials in a `.codecarbon.config` file.
 
-If the API key is passed explicitly in the code, obtain it from the CodeCarbon dashboard/account settings and store it in a variable before starting the tracker. The project name is the name under which the emissions of the current experiment will be grouped in the CodeCarbon dashboard. A project can be created or managed from the CodeCarbon dashboard.The `experiment_id` identifies the specific experiment/run group where the emissions will be logged. This can also be created or obtained from the CodeCarbon dashboard.
+If the API key is passed explicitly in the code, obtain it from the CodeCarbon dashboard/account settings and store it in a variable before starting the tracker.
+
+The project name is the name under which the emissions of the current experiment will be grouped in the CodeCarbon dashboard. A project can be created or managed from the CodeCarbon dashboard.
+
+The `experiment_id` identifies the specific experiment/run group where the emissions will be logged. This can also be created or obtained from the CodeCarbon dashboard.
 
 After the API key, project name, and experiment ID have been obtained, store everything in variables and pass the arguments accordingly in `train.py`, under:
 
@@ -103,3 +111,33 @@ tracker.start()
 ```
 
 The tracker should be started before the training process begins so that the energy consumption and carbon emissions of the model training are recorded and sent to the CodeCarbon online dashboard.
+
+### Hyperparameter optimization
+
+If one is interested in conducting hyperparameter optimization, then replace the executable Python script in `main.sh` as shown below:
+
+```bash
+wandb login
+python3 train.py \
+```
+
+with:
+
+```bash
+wandb login
+python3 train_hypo.py \
+    --data-dir ./dat
+```
+
+After replacing the executable Python script, proceed normally as described in `Documents/README-Slurm.md`.
+
+You will use the `jobscript_slurm.sh` file to submit a job to the SLURM cluster. This script specifies the resources and command.
+
+Submit the job with the following command:
+
+```bash
+chmod +x jobscript_slurm.sh
+sbatch jobscript_slurm.sh
+```
+
+SLURM will queue and execute your job when resources are available.
