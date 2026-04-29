@@ -156,3 +156,8 @@ docker build -t nncv-submission:latest -f "Final assignment/Dockerfile_submissio
 
 > [!CAUTION]
 > **Directory Context Matters:** Please pay close attention to the root folder from which you execute these commands. The relative file paths assume you are running them from the correct project root. Depending on your local directory structure, you may need to adjust the paths to ensure they point to the exact locations of your `Dockerfile_submission` and project files.
+
+
+> [!WARNING]
+> **Notebook Rendering Issues:** GitHub's native `.ipynb` viewer often strips out or fails to render interactive JavaScript widgets. If the notebook does not display correctly or the data augmentation visualizers are missing, please view and run the fully functional notebook directly via this link: 
+> [**Access the Interactive Google Colab Notebook Here**](https://colab.research.google.com/drive/1jmDKXBzwci21nbeS-lO5JH3_QSqhvXvX?usp=sharing)
