@@ -10,4 +10,9 @@
 apptainer pull container.sif docker://christianstefan/nncv-image:latest
 # Load the variables from the .env
 export APPTAINERENV_HF_TOKEN=""
-export APPTAINERENV_HF_HUB_ENA
+export APPTAINERENV_HF_HUB_ENA=0
+
+mkdir -p data
+apptainer exec container.sif \
+    huggingface-cli download TimJaspersTue/5LSM0 --local-dir ./data --repo-type dataset
+
