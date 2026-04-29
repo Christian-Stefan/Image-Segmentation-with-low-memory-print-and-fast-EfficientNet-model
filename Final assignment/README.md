@@ -152,6 +152,7 @@ docker build -t nncv-submission:latest -f "Final assignment/Dockerfile" "Final a
 
 ```bash
 docker build -t nncv-submission:latest -f "Final assignment/Dockerfile_submission" "Final assignment"
+```
 
 > [!CAUTION]
 > **Directory Context Matters:** Please pay close attention to the root folder from which you execute these commands. The relative file paths assume you are running them from the correct project root. Depending on your local directory structure, you may need to adjust the paths to ensure they point to the exact locations of your `Dockerfile_submission` and project files.
