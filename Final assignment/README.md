@@ -48,7 +48,7 @@ Under this section, two on-server execution scenarios are covered:
 i) training the model
 ii) conducting hyperparameter optimization
 
-###i) Training
+### i) Training
 
 If one wants to only train the model, then follow the remaining steps from the third step onwards in `Documents/README-Slurm.md`.
 
@@ -74,7 +74,8 @@ Then authenticate the local/server environment by running:
 codecarbon login
 ```
 
-This command authenticates the environment, creates a default project, and stores the CodeCarbon credentials in a `.codecarbon.config` file. If the API key is passed explicitly in the code, obtain it from the CodeCarbon dashboard/account settings and store it in a variable before starting the tracker. The project name is the name under which the emissions of the current experiment will be grouped in the CodeCarbon dashboard. A project can be created or managed from the CodeCarbon dashboard.
+This command authenticates the environment, creates a default project, and stores the CodeCarbon credentials in a `.codecarbon.config` file. The authentification step becomes optional when an API key linked to the account holder exists thus the `codecarbon login` becomes a negligible step. 
+If the API key is passed explicitly in the code, obtain it from the CodeCarbon dashboard/account settings and store it in a variable before starting the tracker. The project name is the name under which the emissions of the current experiment will be grouped in the CodeCarbon dashboard. A project can be created or managed from the CodeCarbon dashboard.
 
 The `experiment_id` identifies the specific experiment/run group where the emissions will be logged. This can also be created or obtained from the CodeCarbon dashboard.
 
@@ -106,7 +107,7 @@ tracker.start()
 
 The tracker should be started before the training process begins so that the energy consumption and carbon emissions of the model training are recorded and sent to the CodeCarbon online dashboard.
 
-### Hyperparameter optimization
+### ii) Hyperparameter optimization
 
 If one is interested in conducting hyperparameter optimization, then replace the executable Python script in `main.sh` as shown below:
 
