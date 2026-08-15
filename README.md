@@ -17,7 +17,7 @@ As prerequisites, a comprehensive [Cityscapes dataset](https://www.cityscapes-da
 ## Results
 The best model (derived from the [EfficientNet](https://en.wikipedia.org/wiki/EfficientNet) family, equipping a pre-trained [encoder](https://en.wikipedia.org/wiki/Autoencoder) and a [U-Net](https://en.wikipedia.org/wiki/U-Net) as a decoder) is the representative mark to the feasible performance region that has been secured throughout this project. Here, the accuracy, the model's capacity, and its memory print are all "living in harmony" as shown in the experiment summary down below. 
 
-![Experiments Summary](Final%20assignment/Results/ExperimentsSummary.png)
+![Experiments Summary](Final%20assignment/Results/ExperimentSummary.png)
 
 Not only did this work bring into existence a more "consumption aware" model, but it also shed light on the lacks that make accurately estimating the energy consumed throughout the development process particularly hardly achievable. 
 
